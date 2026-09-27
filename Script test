@@ -49,7 +49,7 @@ end)
 GUI.Parent = ParentTarget
 
 local clickSound = Instance.new("Sound")
-clickSound.SoundId = "rbxassetid://9114220405"
+clickSound.SoundId = "rbxassetid://9083627113"
 clickSound.Volume = 0.5
 clickSound.PlaybackSpeed = 0.45
 clickSound.Parent = GUI
