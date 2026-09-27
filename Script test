@@ -70,9 +70,6 @@ end
 
 local EditorMode = true
 
-local expandedSize = UDim2.new(0.8, 0, 0.8, 0)
-local minimizedSize = UDim2.new(0.35, 0, 0, 50)
-
 local MIN_SIZE = Vector2.new(450, 300)
 local MAX_SIZE = Vector2.new(1200, 800)
 
@@ -409,8 +406,9 @@ local SearchLayout = Instance.new("UIListLayout")
 SearchLayout.Padding = UDim.new(0, 2)
 SearchLayout.Parent = SearchResultsScroll
 
+-- Botón de Redimensión con Icono ID 109567647508979
 local ResizeBtn = Instance.new("ImageButton")
-ResizeBtn.Size = UDim2.fromOffset(22, 22)
+ResizeBtn.Size = UDim2.fromOffset(24, 24)
 ResizeBtn.AnchorPoint = Vector2.new(1, 1)
 ResizeBtn.Position = UDim2.new(1, -6, 1, -6)
 ResizeBtn.BackgroundTransparency = 1
@@ -877,7 +875,7 @@ switchCategory(first)
 end
 
 local Main = Instance.new("Frame")
-Main.Size = UDim2.new(0, 0, 0, 0)
+Main.Size = UDim2.new(0.8, 0, 0.8, 0)
 Main.Position = UDim2.new(0.5, 0, 0.1, 0)
 Main.AnchorPoint = Vector2.new(0.5, 0)
 Main.BackgroundColor3 = Color3.fromRGB(8, 10, 16)
@@ -1319,8 +1317,9 @@ AddOptionBtn.Parent = ContentHeader
 
 cr(AddOptionBtn, 6)
 
+-- Botón de Redimensión en el Editor (Icono rbxassetid://109567647508979)
 local ResizeBtn = Instance.new("ImageButton")
-ResizeBtn.Size = UDim2.fromOffset(22, 22)
+ResizeBtn.Size = UDim2.fromOffset(24, 24)
 ResizeBtn.AnchorPoint = Vector2.new(1, 1)
 ResizeBtn.Position = UDim2.new(1, -6, 1, -6)
 ResizeBtn.BackgroundTransparency = 1
@@ -1729,28 +1728,6 @@ ScriptCloseBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
 ScriptCloseBtn.Font = Enum.Font.GothamBold
 cr(ScriptCloseBtn, 6)
 
-local function ejecutarCodigoConsola(codigo, estado, valor)
-	if not codigo or string.match(codigo, "^%s*$") then
-		return
-	end
-
-	local envHeader = string.format(
-		"local state = %s\nlocal estado = %s\nlocal value = %s\nlocal valor = %s\nlocal Player = game:GetService('Players').LocalPlayer\nlocal Players = game:GetService('Players')",
-		tostring(estado or false),
-		tostring(estado or false),
-		tostring(valor or 0),
-		tostring(valor or 0)
-	)
-
-	local func, err = loadstring(envHeader .. "\n" .. codigo)
-
-	if func then
-		task.spawn(func)
-	else
-		warn("[Error en Script]:", err)
-	end
-end
-
 local function buildOption(
 	name,
 	typeId,
@@ -2088,9 +2065,96 @@ local function createCategory(name)
 		showModal(CatModal)
 	end)
 
-	switchCategory(catData)
 	return catData
 end
+
+AddCategoryBtn.MouseButton1Click:Connect(function()
+	playClickFeedback()
+	editingCategory = nil
+	CatInput.Text = ""
+	showModal(CatModal)
+end)
+
+CatSave.MouseButton1Click:Connect(function()
+	playClickFeedback()
+	local catName = CatInput.Text
+	if string.match(catName, "^%s*$") then return end
+
+	if editingCategory then
+		editingCategory.Name = catName
+		editingCategory.Label.Text = "  " .. catName
+		if activeCategory == editingCategory then
+			CurrentCatTitle.Text = catName
+		end
+	else
+		local newCat = createCategory(catName)
+		if #categories == 1 then
+			switchCategory(newCat)
+		end
+	end
+	hideModal(CatModal)
+end)
+
+CatCancel.MouseButton1Click:Connect(function()
+	playClickFeedback()
+	hideModal(CatModal)
+end)
+
+AddOptionBtn.MouseButton1Click:Connect(function()
+	playClickFeedback()
+	if not activeCategory then return end
+	editingOption = nil
+	OptInput.Text = ""
+	CodeInput.Text = ""
+	optType = 1
+	valueEnabled = false
+	ValueInput.Text = "16"
+	updateTypeUI()
+	updateValueUI()
+	showModal(OptModal)
+end)
+
+OptSave.MouseButton1Click:Connect(function()
+	playClickFeedback()
+	local optName = OptInput.Text
+	if string.match(optName, "^%s*$") or not activeCategory then return end
+
+	if editingOption then
+		editingOption.Name = optName
+		editingOption.TypeId = optType
+		editingOption.Code = CodeInput.Text
+		editingOption.ValueEnabled = valueEnabled
+		editingOption.ValueDefault = tonumber(ValueInput.Text) or 0
+		switchCategory(activeCategory)
+	else
+		buildOption(
+			optName,
+			optType,
+			activeCategory.Scroll,
+			CodeInput.Text,
+			nil,
+			valueEnabled,
+			tonumber(ValueInput.Text) or 0
+		)
+	end
+	hideModal(OptModal)
+end)
+
+OptCancel.MouseButton1Click:Connect(function()
+	playClickFeedback()
+	hideModal(OptModal)
+end)
+
+ExecBtn.MouseButton1Click:Connect(function()
+	playClickFeedback()
+	local finalScript = GenerateFinalScript()
+	local func, err = loadstring(finalScript)
+	if func then
+		task.spawn(func)
+	else
+		warn("[Error al ejecutar script generado]:", err)
+	end
+end)
 
 ViewBtn.MouseButton1Click:Connect(function()
 	playClickFeedback()
@@ -2105,167 +2169,12 @@ end)
 
 CopyBtn.MouseButton1Click:Connect(function()
 	playClickFeedback()
-	pcall(function()
-		if setclipboard then
-			setclipboard(GenerateFinalScript())
-			CopyBtn.Text = "Copiado"
-			CopyBtn.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
-			task.delay(1.5, function()
-				CopyBtn.Text = "Copiar"
-				CopyBtn.BackgroundColor3 = Color3.fromRGB(15, 22, 35)
-			end)
-		else
-			CopyBtn.Text = "Error"
-			CopyBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
-			task.delay(1.5, function()
-				CopyBtn.Text = "Copiar"
-				CopyBtn.BackgroundColor3 = Color3.fromRGB(15, 22, 35)
-			end)
-		end
-	end)
-end)
-
-AddCategoryBtn.MouseButton1Click:Connect(function()
-	playClickFeedback()
-	editingCategory = nil
-	CatInput.Text = ""
-	showModal(CatModal)
-end)
-
-CatCancel.MouseButton1Click:Connect(function()
-	playClickFeedback()
-	hideModal(CatModal)
-end)
-
-CatSave.MouseButton1Click:Connect(function()
-	playClickFeedback()
-	if CatInput.Text ~= "" then
-		if editingCategory then
-			editingCategory.Name = CatInput.Text
-			editingCategory.Label.Text = "  " .. CatInput.Text
-			if activeCategory == editingCategory then
-				CurrentCatTitle.Text = CatInput.Text
-			end
-		else
-			createCategory(CatInput.Text)
-		end
-		hideModal(CatModal)
+	local scriptCode = GenerateFinalScript()
+	if setclipboard then
+		setclipboard(scriptCode)
+	elseif toclipboard then
+		toclipboard(scriptCode)
 	end
-end)
-
-AddOptionBtn.MouseButton1Click:Connect(function()
-	playClickFeedback()
-	if not activeCategory then return end
-	editingOption = nil
-	OptInput.Text = ""
-	CodeInput.Text = "local char = Player.Character\nif char and char:FindFirstChild('Humanoid') then\n\tif state then\n\t\tchar.Humanoid.WalkSpeed = value\n\telse\n\t\tchar.Humanoid.WalkSpeed = 16\n\tend\nend"
-	optType = 1
-	valueEnabled = false
-	ValueInput.Text = "16"
-	updateTypeUI()
-	updateValueUI()
-	showModal(OptModal)
-end)
-
-OptCancel.MouseButton1Click:Connect(function()
-	playClickFeedback()
-	hideModal(OptModal)
-end)
-
-OptSave.MouseButton1Click:Connect(function()
-	playClickFeedback()
-	if OptInput.Text ~= "" and activeCategory then
-		local defaultValue = tonumber(ValueInput.Text) or 0
-
-		if editingOption then
-			editingOption.Name = OptInput.Text
-			editingOption.Code = CodeInput.Text
-			editingOption.TypeId = optType
-			editingOption.ValueEnabled = valueEnabled
-			editingOption.ValueDefault = defaultValue
-
-			if editingOption.ValueFrame then
-				editingOption.ValueFrame:Destroy()
-				editingOption.ValueFrame = nil
-			end
-			if editingOption.Frame then
-				editingOption.Frame:Destroy()
-			end
-
-			buildOption(
-				OptInput.Text, optType, activeCategory.Scroll,
-				CodeInput.Text, editingOption, valueEnabled, defaultValue
-			)
-		else
-			buildOption(
-				OptInput.Text, optType, activeCategory.Scroll,
-				CodeInput.Text, nil, valueEnabled, defaultValue
-			)
-		end
-
-		hideModal(OptModal)
-	end
-end)
-
-ExecBtn.MouseButton1Click:Connect(function()
-	playClickFeedback()
-	if not EditorMode then return end
-
-	tw(ExecBtn, 0.1, { BackgroundColor3 = Color3.fromRGB(255, 255, 255) })
-	task.delay(0.1, function()
-		tw(ExecBtn, 0.2, { BackgroundColor3 = Color3.fromRGB(20, 160, 70) })
-	end)
-
-	EditorMode = false
-
-	tw(Main, 0.3, { Size = UDim2.new(0, 0, 0, 0) })
-	task.wait(0.3)
-
-	if ActionButtons then ActionButtons.Visible = false end
-	if AddCategoryBtn then AddCategoryBtn.Visible = false end
-	if AddOptionBtn then AddOptionBtn.Visible = false end
-	if ReturnEditorBtn then ReturnEditorBtn.Visible = true end
-
-	for _, cat in ipairs(categories) do
-		if cat.EditBtn then cat.EditBtn.Visible = false end
-		if cat.Label then cat.Label.Size = UDim2.new(1, 0, 1, 0) end
-	end
-
-	Title.Text = "OAH | SCRIPT MENU"
-	Title.TextColor3 = Color3.fromRGB(0, 220, 255)
-
-	tw(Main, 0.4, { Size = expandedSize })
-end)
-
-ReturnEditorBtn.MouseButton1Click:Connect(function()
-	playClickFeedback()
-	if EditorMode then return end
-
-	tw(ReturnEditorBtn, 0.1, { BackgroundColor3 = Color3.fromRGB(255, 255, 255) })
-	task.delay(0.1, function()
-		tw(ReturnEditorBtn, 0.2, { BackgroundColor3 = Color3.fromRGB(0, 120, 225) })
-	end)
-
-	EditorMode = true
-
-	tw(Main, 0.3, { Size = UDim2.new(0, 0, 0, 0) })
-	task.wait(0.3)
-
-	if ActionButtons then ActionButtons.Visible = true end
-	if AddCategoryBtn then AddCategoryBtn.Visible = true end
-	if AddOptionBtn then AddOptionBtn.Visible = true end
-	if ReturnEditorBtn then ReturnEditorBtn.Visible = false end
-
-	for _, cat in ipairs(categories) do
-		if cat.EditBtn then cat.EditBtn.Visible = true end
-		if cat.Label then cat.Label.Size = UDim2.new(1, -30, 1, 0) end
-	end
-
-	Title.Text = "OAH | SCRIPT CREATOR"
-	Title.TextColor3 = Color3.new(1, 1, 1)
-
-	updateResponsiveLayout()
-	tw(Main, 0.4, { Size = expandedSize })
 end)
 
 local dragging
@@ -2326,64 +2235,19 @@ MinBtn.MouseButton1Click:Connect(function()
 		ContentArea.Visible = false
 		ResizeBtn.Visible = false
 
-		if ActionButtons then
-			ActionButtons.Visible = false
-		end
-
-		tw(Main, 0.3, { Size = minimizedSize })
+		tw(Main, 0.3, { Size = UDim2.new(0.35, 0, 0, 50) })
 	else
 		MinBtn.Text = "-"
-		tw(Main, 0.3, { Size = expandedSize })
+		tw(Main, 0.3, { Size = UDim2.new(0.8, 0, 0.8, 0) })
 
 		task.delay(0.2, function()
 			if not minimized then
 				SidePanel.Visible = true
 				ContentArea.Visible = true
 				ResizeBtn.Visible = true
-
-				if EditorMode and ActionButtons then
-					ActionButtons.Visible = true
-				end
 			end
 		end)
 	end
 end)
 
-local primerScriptCat = createCategory("Principal")
-buildOption(
-	"Súper Velocidad (Ejemplo)",
-	1,
-	primerScriptCat.Scroll,
-	[[
-local char = Player.Character
-
-if char and char:FindFirstChild("Humanoid") then
-	if state then
-		char.Humanoid.WalkSpeed = value
-	else
-		char.Humanoid.WalkSpeed = 16
-	end
-end
-]],
-	nil,
-	true,
-	116
-)
-
-switchCategory(primerScriptCat)
-
-task.spawn(function()
-	Main.Position = UDim2.new(0.5, 0, 0.1, 0)
-	Main.Size = UDim2.new(0, 1, 0, 3)
-
-	tw(XenonBar, 0.4, { Size = UDim2.new(1, 0, 0, 3) })
-	task.wait(0.4)
-
-	tw(Main, 0.6, { Size = expandedSize })
-	task.wait(0.7)
-
-	XenonBar.BackgroundTransparency = 0
-	tw(XenonBar, 0.3, { BackgroundTransparency = 1 })
-
-	print("[OAH] Menú cargado correctamente!")
-end)
+print("[OAH] Creador de Scripts cargado con éxito.")
